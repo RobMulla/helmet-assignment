@@ -1,6 +1,13 @@
 # NFL Helmet Assignment Helpers
 A package of code to assist in the 2021 Kaggle NFL Helmet Assignment Task
 
+## Install
+```bash
+$ git clone https://github.com/RobMulla/helmet-assignment.git
+$ cd helmet-assignment
+$ pip install .
+```
+
 ## Scoring
 This code can be used to score your predictions in a similar to the offical competition metric.
 
