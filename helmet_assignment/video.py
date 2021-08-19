@@ -49,7 +49,7 @@ def video_with_predictions(
 
         cv2.putText(img, str(frame), (1230, 710), cv2.FONT_HERSHEY_SIMPLEX, 0.8, WHITE, thickness=1)
         # Get stats about current state in frame
-        stats = sub_labels.query('video == @video and frame <= @frame')
+        stats = sub_labels.query('video == @video_name and frame <= @frame')
         correct_nonimp = len(stats.query('weight == 1 and isCorrect'))
         total_nonimp = len(stats.query('weight == 1'))
         correct_imp = len(stats.query('weight > 1 and isCorrect'))
