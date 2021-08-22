@@ -27,7 +27,7 @@ The `check_submission` can be used as a final check to ensure your submission me
 
 ```python
 check_submission(submission_df)
->> True # If passed otherwith returns False
+>> True # If passed otherwise returns False
 ```
 
 ## Videos
