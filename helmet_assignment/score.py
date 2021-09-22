@@ -15,9 +15,9 @@ def check_submission(sub):
     2. Only one label prediction per video/frame
     3. No duplicate boxes per frame.
     4. Boxes must be within video area:
-        - `top` and `left` must be >= 0
+        - `top` and `left` must each be >= 0
         - The sum of `left` and `width` must be <= 1280
-        - The sum of `top` + `height` must be must be <= 720
+        - The sum of `top` and `height` must be must be <= 720
     Args:
         sub : submission dataframe.
     Returns:
