@@ -11,14 +11,15 @@ https://www.kaggle.com/c/nfl-health-and-safety-helmet-assignment/overview/evalua
 def check_submission(sub):
     """
     Checks that the submission meets all the requirements.
-
     1. No more than 22 Boxes per frame.
     2. Only one label prediction per video/frame
     3. No duplicate boxes per frame.
-
+    4. Boxes must be within video area:
+        - `top` and `left` must each be >= 0
+        - The sum of `left` and `width` must be <= 1280
+        - The sum of `top` and `height` must be must be <= 720
     Args:
         sub : submission dataframe.
-
     Returns:
         True -> Passed the tests
         False -> Failed the test
@@ -38,8 +39,39 @@ def check_submission(sub):
     if has_duplicate_boxes:
         print("Has duplicate boxes")
         return False
+    if sub['left'].min() < 0:
+        print('left column has values less than 0')
+        return False
+    if sub['top'].min() < 0:
+        print('top column has values less than 0')
+        return False
+    if (sub['left'] + sub['width']).max() > 1280:
+        print('left+width columns has values greater than 1280')
+        return False
+    if (sub['top'] + sub['height']).max() > 720:
+        print('top+height columns has values greater than 720')
+        return False
     return True
 
+def force_sub_requirements(sub, verbose=True):
+    """
+    Enforces the submission submission
+    *Warning* Using this code may remove prediction rows in a sub-optimal manner.
+    """
+    len_before = len(sub)
+    sub = sub.drop_duplicates(['video_frame', 'left','width','top','height'])
+    sub = sub.drop_duplicates(['video_frame', 'label'])
+    sub = sub.groupby("video_frame").head(22)
+    sub = sub.loc[sub['left'] >= 0]
+    sub = sub.loc[sub['top'] >= 0]
+    sub = sub.loc[(sub['top'] + sub['height']) <= 720]
+    sub = sub.loc[(sub['left'] + sub['width']) <= 1280]
+    sub = sub.reset_index(drop=True)
+    if verbose:
+        len_after = len(sub)
+        n_removed = len_before - len_after
+        print(f'Forcing submission requirements removed {n_removed} rows ({len_before} -> {len_after})')
+    return sub
 
 class NFLAssignmentScorer:
     def __init__(
@@ -55,20 +87,16 @@ class NFLAssignmentScorer:
         """
         Helper class for grading submissions in the
         2021 Kaggle Competition for helmet assignment.
-        Version 1.0
+        Version 1.1
         https://www.kaggle.com/robikscube/nfl-helmet-assignment-getting-started-guide
-
         Use:
         ```
         scorer = NFLAssignmentScorer(labels)
         scorer.score(submission_df)
-
         or
-
         scorer = NFLAssignmentScorer(labels_csv='labels.csv')
         scorer.score(submission_df)
         ```
-
         Args:
             labels_df (pd.DataFrame, optional):
                 Dataframe containing theground truth label boxes.
@@ -104,42 +132,9 @@ class NFLAssignmentScorer:
         self.weight_col = weight_col
         self.iou_threshold = iou_threshold
 
-    def check_submission(self, sub):
-        """
-        Checks that the submission meets all the requirements.
-
-        1. No more than 22 Boxes per frame.
-        2. Only one label prediction per video/frame
-        3. No duplicate boxes per frame.
-
-        Args:
-            sub : submission dataframe.
-
-        Returns:
-            True -> Passed the tests
-            False -> Failed the test
-        """
-        # Maximum of 22 boxes per frame.
-        max_box_per_frame = sub.groupby(["video_frame"])["label"].count().max()
-        if max_box_per_frame > 22:
-            print("Has more than 22 boxes in a single frame")
-            return False
-        # Only one label allowed per frame.
-        has_duplicate_labels = sub[["video_frame", "label"]].duplicated().any()
-        if has_duplicate_labels:
-            print("Has duplicate labels")
-            return False
-        # Check for unique boxes
-        has_duplicate_boxes = sub[["video_frame", "left", "width", "top", "height"]].duplicated().any()
-        if has_duplicate_boxes:
-            print("Has duplicate boxes")
-            return False
-        return True
-
     def add_xy(self, df):
         """
         Adds `x1`, `x2`, `y1`, and `y2` columns necessary for computing IoU.
-
         Note - for pixel math, 0,0 is the top-left corner so box orientation
         defined as right and down (height)
         """
@@ -230,10 +225,8 @@ class NFLAssignmentScorer:
     def score(self, sub, labels_df=None, drop_extra_cols=True):
         """
         Scores the submission file against the labels.
-
         Returns the evaluation metric score for the helmet
         assignment kaggle competition.
-
         If `check_constraints` is set to True, will return -999 if the
             submission fails one of the submission constraints.
         """
@@ -241,7 +234,7 @@ class NFLAssignmentScorer:
             labels_df = self.labels_df.copy()
 
         if self.check_constraints:
-            if not self.check_submission(sub):
+            if not check_submission(sub):
                 return -999
         sub_labels = self.merge_sub_labels(sub, labels_df, self.weight_col)
         sub_labels = self.get_iou_df(sub_labels).copy()
@@ -255,7 +248,7 @@ class NFLAssignmentScorer:
         self.sub_labels = sub_labels
         return score
 
-
+    
 if __name__ == "__main__":
-    sub = pd.DataFrame()
+    sub = pd.DataFrame(columns=['isSidelinePlayer'])
     scorer = NFLAssignmentScorer(sub)
